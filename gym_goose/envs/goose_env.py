@@ -29,14 +29,14 @@ class GooseEnv(gym.Env, ABC):
         self._previous_obs = None  # agent should know the prev. obs to get a direction of a goose moving
 
         self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.Box(low=0, high=1, shape=(2*obs_shape,), dtype=np.float64)
+        self.observation_space = spaces.Box(low=-0.5, high=1, shape=(2*obs_shape,), dtype=np.float64)
 
     def reset(self):
         state = self._trainer.reset()
         obs = get_obs(self._env.configuration, state)
         double_obs = np.concatenate((obs, obs))
         self._previous_obs = obs
-        return double_obs, 0, False, {}
+        return double_obs
 
     def step(self, action: int):
         if self._debug:
