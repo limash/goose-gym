@@ -5,6 +5,7 @@ import gym
 from gym import spaces
 
 from kaggle_environments import make
+from kaggle_environments.envs.hungry_geese.hungry_geese import Action, translate
 
 ACTION_NAMES = {0: 'NORTH',
                 1: 'SOUTH',
@@ -21,18 +22,20 @@ class GooseEnv(gym.Env, ABC):
 
     def __init__(self, debug=False):
         self._env = make('hungry_geese', debug=debug)
-        config = self._env.configuration
-        obs_shape = config.columns * config.rows
+        self._config = self._env.configuration
+        obs_shape = self._config.columns * self._config.rows
 
         self._debug = debug
         self._trainer = self._env.train([None, "greedy"])
         self._previous_obs = None  # agent should know the prev. obs to get a direction of a goose moving
+        self._previous_state = None
 
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(low=-0.5, high=1, shape=(2*obs_shape,), dtype=np.float64)
 
     def reset(self):
         state = self._trainer.reset()
+        self._previous_state = state
         obs = get_obs(self._env.configuration, state)
         double_obs = np.concatenate((obs, obs))
         self._previous_obs = obs
@@ -46,13 +49,25 @@ class GooseEnv(gym.Env, ABC):
         double_obs = np.concatenate((self._previous_obs, obs))
         self._previous_obs = obs
 
-        reward = state[1]
         done = state[2]
         info = state[3]
+
+        reward = state[1]
+        reward += self.get_reward_for_food(action)
+        self._previous_state = state[0]
 
         restricted = OPPOSITE_ACTION_NAMES[action]
         info['allowed_actions'] = [x for x in ACTION_NAMES if ACTION_NAMES[x] != restricted]
         return double_obs, reward, done, info
+
+    def get_reward_for_food(self, action):
+        goose_head = self._previous_state['geese'][0][0]
+        food = self._previous_state['food']
+        next_head = translate(goose_head, Action[ACTION_NAMES[action]], self._config.columns, self._config.rows)
+        if next_head in food:
+            return 10
+        else:
+            return 0
 
 
 def get_obs(config, state):
