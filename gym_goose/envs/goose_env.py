@@ -21,7 +21,11 @@ OPPOSITE_ACTION_NAMES = {0: 'SOUTH',
 class GooseEnv(gym.Env, ABC):
 
     def __init__(self, debug=False):
-        self._env = make('hungry_geese', debug=debug)
+        self._env = make('hungry_geese',
+                         configuration={
+                             'min_food': 2
+                         },
+                         debug=debug)
         self._config = self._env.configuration
         obs_shape = self._config.columns * self._config.rows
 
