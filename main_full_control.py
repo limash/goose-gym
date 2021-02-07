@@ -78,7 +78,7 @@ def show_gym(number_of_iterations):
     for i in range(number_of_iterations):
         t0 = time.time()
         obs = env.reset()
-        n_players = len(obs)
+        n_players = len(obs[0])
         available_actions = [0, 1, 2, 3]
         actions = [random.choice(available_actions) for _ in range(n_players)]
         for step in range(200):
