@@ -39,7 +39,11 @@ class GooseEnvFullControl(gym.Env, ABC):
                                          dtype=np.float64)
                               for _ in range(self._n_agents)])
         self.observation_space = spaces.Tuple((
-            spaces.Tuple(observations), spaces.Discrete(1)
+            spaces.Tuple(observations),
+            spaces.Box(low=0,
+                       high=1,
+                       shape=(1,),
+                       dtype=np.float64)
         ))
 
     def reset(self):
@@ -48,7 +52,8 @@ class GooseEnvFullControl(gym.Env, ABC):
             printout(state)
         self._players_obs = [None for _ in range(self._n_agents)]
         self._players_obs = self.get_players_obs(state, self._players_obs)
-        return self._players_obs, state[0].observation.step
+        scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
+        return self._players_obs, scalars
 
     def step(self, actions):
         action_names = [ACTION_NAMES[action] for action in actions]
@@ -57,10 +62,15 @@ class GooseEnvFullControl(gym.Env, ABC):
             printout(state)
             if any([] == x for x in state[0].observation['geese']):
                 print("Somebody is dead")
+            print("----Next step----:")
         self._players_obs = self.get_players_obs(state, self._players_obs)
 
-        reward = [state[i].reward for i in range(self._n_agents)]
         done = [True if state[i].status != 'ACTIVE' else False for i in range(self._n_agents)]
+        if all(done):
+            reward = [len(state[0].observation.geese[i]) + any(state[0].observation.geese[i])*400
+                      for i in range(self._n_agents)]
+        else:
+            reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
 
         info = []
         for i in range(self._n_agents):
@@ -69,7 +79,8 @@ class GooseEnvFullControl(gym.Env, ABC):
         restricted = [OPPOSITE_ACTION_NAMES[actions[i]] for i in range(self._n_agents)]
         [info[y]['allowed_actions'].append(x) for y in range(self._n_agents) for x in ACTION_NAMES
             if ACTION_NAMES[x] != restricted[y]]
-        return (self._players_obs, state[0].observation.step), reward, done, info
+        scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
+        return (self._players_obs, scalars), reward, done, info
 
     def get_players_obs(self, state, players_obs):
         geese_deque = deque(state[0].observation['geese'])
@@ -86,7 +97,7 @@ def printout(state):
     geese = state[0].observation.geese
     for i in range(len(state)):
         print(f"Goose index: {state[i].observation.index}, cells: {geese[i]}, "
-              f"status: {state[i].status}, action: {state[i].action}, reward: {state[i].reward}")
+              f"status: {state[i].status}, action: {state[i].action}, kaggle reward: {state[i].reward}")
 
 
 def get_obs(config, state):
