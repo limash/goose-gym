@@ -30,9 +30,11 @@ class GooseEnvFullControl(gym.Env, ABC):
 
         self._debug = debug
         self._n_agents = 4
+        self._geese_length = np.ones(self._n_agents)
         self._players_obs = None
 
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(4)  # 4 discrete actions - to fix
+        # 4 maps for -3, -2, -1, 0 steps
         observations = tuple([spaces.Box(low=-0.5,
                                          high=1,
                                          shape=(self._config.rows, self._config.columns, 4),
@@ -70,7 +72,10 @@ class GooseEnvFullControl(gym.Env, ABC):
             reward = [len(state[0].observation.geese[i]) + any(state[0].observation.geese[i])*400
                       for i in range(self._n_agents)]
         else:
-            reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
+            # reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
+            geese_len_new = np.array([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
+            reward = geese_len_new - self._geese_length
+            self._geese_length = geese_len_new
 
         info = []
         for i in range(self._n_agents):
@@ -80,7 +85,7 @@ class GooseEnvFullControl(gym.Env, ABC):
         [info[y]['allowed_actions'].append(x) for y in range(self._n_agents) for x in ACTION_NAMES
             if ACTION_NAMES[x] != restricted[y]]
         scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
-        return (self._players_obs, scalars), reward, done, info
+        return (self._players_obs, scalars), list(reward), done, info
 
     def get_players_obs(self, state, players_obs):
         geese_deque = deque(state[0].observation['geese'])
@@ -125,8 +130,9 @@ def get_obs(config, state):
     # mark food
     line[state['food']] = food_number
     # normalize
-    line = line / player_number
-    obs = np.reshape(line, (config.rows, config.columns))
+    # norm_line = line / player_number
+    norm_line = (line - line.mean()) / line.std()
+    obs = np.reshape(norm_line, (config.rows, config.columns))
     return obs
 
 

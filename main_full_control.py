@@ -6,10 +6,10 @@ import numpy as np
 import tensorflow as tf
 import gym
 from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration
-# from kaggle_environments import make
+from kaggle_environments import make
 
-from gym_goose.envs.goose_env_full_control import get_obs, ACTION_NAMES, OPPOSITE_ACTION_NAMES
-from tf_reinforcement_testcases import models
+from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue, ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from goose_agent import models
 
 ACTIONS = [0, 1, 2, 3]
 previous_obs = None
@@ -24,6 +24,31 @@ def random_policy(unused_input):
     restricted = OPPOSITE_ACTION_NAMES[action]
     ACTIONS = [x for x in ACTION_NAMES if ACTION_NAMES[x] != restricted]
     return ACTION_NAMES[action]
+
+
+def get_dqn_policy(env_name):
+    try:
+        with open('data/data.pickle', 'rb') as file:
+            init_data = pickle.load(file)
+    except FileNotFoundError as err:
+        raise err
+
+    env = gym.make(env_name)
+    space = env.observation_space
+    feature_maps_shape = space[0][0].shape  # height, width, channels
+    scalar_features_shape = space[1].shape
+    input_shape = (feature_maps_shape, scalar_features_shape)
+    n_outputs = env.action_space.n
+
+    model = models.get_dqn(input_shape, n_outputs)
+    model.set_weights(init_data['weights'])
+
+    def policy(obs):
+        obs = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), obs)
+        Q_values = model(obs)
+        int_act = np.argmax(Q_values[0])
+        return ACTION_NAMES[int_act]
+    return policy
 
 
 def get_cat_policy(env_name):
@@ -43,7 +68,7 @@ def get_cat_policy(env_name):
     support = tf.linspace(min_q_value, max_q_value, n_atoms)
     support = tf.cast(support, tf.float32)
 
-    model = models.get_mlp(input_shape, cat_n_outputs)
+    model = models.get_dqn(input_shape, cat_n_outputs)
     model.set_weights(init_data['weights'])
 
     def policy(obs):
@@ -65,12 +90,36 @@ def get_cat_policy(env_name):
 
 def get_geese_agent(policy):
     def geese_agent(obs_dict, config_dict):
+        global previous_obs
+
         state = Observation(obs_dict)
         config = Configuration(config_dict)
-        obs = get_obs(config, state)
-        action = policy(obs)
+
+        obs = get_obs(config, state)  # get an observation
+        scalars = np.asarray((state.step / config.episode_steps,))
+        previous_obs = get_obs_queue(obs, previous_obs)  # put observation into a queue
+
+        action = policy((previous_obs, scalars))
         return action
     return geese_agent
+
+
+class GeeseAgent:
+    def __init__(self, policy):
+        self._previous_obs = None
+        self._policy = policy
+
+    def get_action(self, obs_dict, config_dict):
+        state = Observation(obs_dict)
+        config = Configuration(config_dict)
+        state.geese[0], state.geese[state.index] = state.geese[state.index], state.geese[0]
+
+        obs = get_obs(config, state)  # get an observation
+        scalars = np.asarray((state.step / config.episode_steps,))
+        self._previous_obs = get_obs_queue(obs, self._previous_obs)  # put observation into a queue
+
+        action = self._policy((self._previous_obs, scalars))
+        return action
 
 
 def show_gym(number_of_iterations):
@@ -95,7 +144,7 @@ if __name__ == '__main__':
     number_of_games = 10
     show_gym(number_of_games)
 
-    # environment = make("hungry_geese", debug=True)
-    # trained_policy = get_cat_policy('gym_goose:goose-v0')
-    # goose = get_geese_agent(trained_policy)
-    # logs = environment.run([goose, "greedy"])
+    # environment = make('hungry_geese', configuration={'min_food': 10})
+    # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
+    # geese = [GeeseAgent(trained_policy) for _ in range(4)]
+    # logs = environment.run([goose.get_action for goose in geese])
