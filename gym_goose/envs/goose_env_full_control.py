@@ -23,21 +23,28 @@ class GooseEnvFullControl(gym.Env, ABC):
     def __init__(self, debug=False):
         self._env = make('hungry_geese',
                          configuration={
-                             'min_food': 10
+                             'min_food': 2
                          },
                          debug=debug)
         self._config = self._env.configuration
 
         self._debug = debug
         self._n_agents = 4
-        self._geese_length = np.ones(self._n_agents)
+        self._geese_length = np.ones(self._n_agents)  # for rewards
         self._players_obs = None
+        self._old_heads = [np.zeros((self._n_agents, self._config.rows * self._config.columns), dtype=np.float32)
+                           for _ in range(self._n_agents)]
 
         self.action_space = spaces.Discrete(4)  # 4 discrete actions - to fix
         # 4 maps for -3, -2, -1, 0 steps
-        observations = tuple([spaces.Box(low=-0.5,
-                                         high=1,
-                                         shape=(self._config.rows, self._config.columns, 4),
+        # observations = tuple([spaces.Box(low=-0.5,
+        #                                  high=1,
+        #                                  shape=(self._config.rows, self._config.columns, 4),
+        #                                  dtype=np.float64)
+        #                       for _ in range(self._n_agents)])
+        observations = tuple([spaces.Box(low=0.,
+                                         high=1.,
+                                         shape=(self._config.rows, self._config.columns, self._n_agents*4+1),
                                          dtype=np.float64)
                               for _ in range(self._n_agents)])
         self.observation_space = spaces.Tuple((
@@ -90,8 +97,11 @@ class GooseEnvFullControl(gym.Env, ABC):
     def get_players_obs(self, state, players_obs):
         geese_deque = deque(state[0].observation['geese'])
         for i in range(self._n_agents):
-            obs = get_obs(self._env.configuration, state[0].observation)  # get an observation
-            players_obs[i] = get_obs_queue(obs, players_obs[i])  # put observation into a queue
+            # obs = get_obs(self._env.configuration, state[0].observation)  # get an observation
+            # players_obs[i] = get_obs_queue(obs, players_obs[i])  # put observation into a queue
+            players_obs[i], self._old_heads[i] = get_feature_maps(self._env.configuration,
+                                                                  state[0].observation,
+                                                                  self._old_heads[i])
             geese_deque.rotate(-1)
             state[0].observation['geese'] = geese_deque
         return players_obs
@@ -143,3 +153,19 @@ def get_obs_queue(obs, old_obs_queue):
         old_obs_queue[:, :, :3] = old_obs_queue[:, :, 1:]
         old_obs_queue[:, :, 3] = obs
     return old_obs_queue
+
+
+def get_feature_maps(config, state, old_heads):
+    n_geese = len(state['geese'])
+    # head, tail, body, previous head plus food
+    number_of_layers = n_geese * 4 + 1
+    A = np.zeros((number_of_layers, config.rows*config.columns))
+    for idx, goose in enumerate(state['geese']):
+        A[0 + idx, goose[:1]] = 1  # head
+        A[n_geese + idx, goose[-1:]] = 1  # tail
+        A[2*n_geese + idx, goose] = 1  # body
+    A[3*n_geese:4*n_geese, :] = old_heads
+    A[4*n_geese, state['food']] = 1
+    B = A.reshape((-1, config.rows, config.columns))
+    C = np.moveaxis(B, 0, -1)
+    return C, A[:n_geese, :]

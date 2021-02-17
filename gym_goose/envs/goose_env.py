@@ -23,7 +23,7 @@ class GooseEnv(gym.Env, ABC):
     def __init__(self, debug=False):
         self._env = make('hungry_geese',
                          configuration={
-                             'min_food': 2
+                             'min_food': 10
                          },
                          debug=debug)
         self._config = self._env.configuration
@@ -33,6 +33,7 @@ class GooseEnv(gym.Env, ABC):
         self._trainer = self._env.train([None, "greedy"])
         self._previous_obs = None  # agent should know the prev. obs to get a direction of a goose moving
         self._previous_state = None
+        self._obses = []
 
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(low=-0.5, high=1, shape=(2*obs_shape,), dtype=np.float64)
@@ -40,29 +41,35 @@ class GooseEnv(gym.Env, ABC):
     def reset(self):
         state = self._trainer.reset()
         self._previous_state = state
-        obs = get_obs(self._env.configuration, state)
-        double_obs = np.concatenate((obs, obs))
-        self._previous_obs = obs
-        return double_obs
+        self._obses.append(state)
+        obs = make_input(self._obses)
+        # obs = get_obs(self._env.configuration, state)
+        # double_obs = np.concatenate((obs, obs))
+        # self._previous_obs = obs
+        # return double_obs
+        return obs
 
     def step(self, action: int):
         if self._debug:
             print(f"Action to do: {ACTION_NAMES[action]}")
         state = self._trainer.step(ACTION_NAMES[action])
-        obs = get_obs(self._env.configuration, state[0])
-        double_obs = np.concatenate((self._previous_obs, obs))
-        self._previous_obs = obs
+        self._obses.append(state[0])
+        obs = make_input(self._obses)
+        # obs = get_obs(self._env.configuration, state[0])
+        # double_obs = np.concatenate((self._previous_obs, obs))
+        # self._previous_obs = obs
 
         done = state[2]
         info = state[3]
 
         reward = state[1]
-        reward += self.get_reward_for_food(action)
-        self._previous_state = state[0]
+        # reward += self.get_reward_for_food(action)
+        # self._previous_state = state[0]
 
         restricted = OPPOSITE_ACTION_NAMES[action]
         info['allowed_actions'] = [x for x in ACTION_NAMES if ACTION_NAMES[x] != restricted]
-        return double_obs, reward, done, info
+        # return double_obs, reward, done, info
+        return obs, reward, done, info
 
     def get_reward_for_food(self, action):
         goose_head = self._previous_state['geese'][0][0]
@@ -101,3 +108,35 @@ def get_obs(config, state):
     # normalize
     obs = obs / player_number
     return obs
+
+
+def make_input(obses):
+    b = np.zeros((17, 7 * 11), dtype=np.float32)
+    obs = obses[-1]
+
+    for p, pos_list in enumerate(obs['geese']):
+        # head position
+        for pos in pos_list[:1]:
+            ind = (p - obs['index']) % 4
+            b[0 + ind, pos] = 1
+        # tip position
+        for pos in pos_list[-1:]:
+            ind = (p - obs['index']) % 4
+            b[4 + ind, pos] = 1
+        # whole position
+        for pos in pos_list:
+            ind = (p - obs['index']) % 4
+            b[8 + ind, pos] = 1
+
+    # previous head position
+    if len(obses) > 1:
+        obs_prev = obses[-2]
+        for p, pos_list in enumerate(obs_prev['geese']):
+            for pos in pos_list[:1]:
+                b[12 + (p - obs['index']) % 4, pos] = 1
+
+    # food
+    for pos in obs['food']:
+        b[16, pos] = 1
+
+    return b.reshape(-1, 7, 11)
