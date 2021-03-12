@@ -23,7 +23,7 @@ class GooseEnvFullControl(gym.Env, ABC):
     def __init__(self, debug=False):
         self._env = make('hungry_geese',
                          configuration={
-                             'min_food': 2
+                             'min_food': 10
                          },
                          debug=debug)
         self._config = self._env.configuration
@@ -32,7 +32,7 @@ class GooseEnvFullControl(gym.Env, ABC):
         self._n_agents = 4
         self._geese_length = np.ones(self._n_agents)  # for rewards
         self._players_obs = None
-        self._old_heads = [np.zeros((self._n_agents, self._config.rows * self._config.columns), dtype=np.float32)
+        self._old_heads = [np.zeros((self._n_agents, self._config.rows * self._config.columns), dtype=np.uint8)
                            for _ in range(self._n_agents)]
 
         self.action_space = spaces.Discrete(4)  # 4 discrete actions - to fix
@@ -42,17 +42,17 @@ class GooseEnvFullControl(gym.Env, ABC):
         #                                  shape=(self._config.rows, self._config.columns, 4),
         #                                  dtype=np.float64)
         #                       for _ in range(self._n_agents)])
-        observations = tuple([spaces.Box(low=0.,
-                                         high=1.,
+        observations = tuple([spaces.Box(low=0,
+                                         high=1,
                                          shape=(self._config.rows, self._config.columns, self._n_agents*4+1),
-                                         dtype=np.float64)
+                                         dtype=np.uint8)
                               for _ in range(self._n_agents)])
         self.observation_space = spaces.Tuple((
             spaces.Tuple(observations),
             spaces.Box(low=0,
-                       high=1,
+                       high=200,
                        shape=(1,),
-                       dtype=np.float64)
+                       dtype=np.uint8)
         ))
 
     def reset(self):
@@ -61,7 +61,8 @@ class GooseEnvFullControl(gym.Env, ABC):
             printout(state)
         self._players_obs = [None for _ in range(self._n_agents)]
         self._players_obs = self.get_players_obs(state, self._players_obs)
-        scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
+        # scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
+        scalars = np.asarray((state[0].observation.step,), dtype=np.uint8)
         return self._players_obs, scalars
 
     def step(self, actions):
@@ -76,7 +77,7 @@ class GooseEnvFullControl(gym.Env, ABC):
 
         done = [True if state[i].status != 'ACTIVE' else False for i in range(self._n_agents)]
         if all(done):
-            reward = [len(state[0].observation.geese[i]) + any(state[0].observation.geese[i])*400
+            reward = [len(state[0].observation.geese[i]) + any(state[0].observation.geese[i])*state[0].observation.step
                       for i in range(self._n_agents)]
         else:
             # reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
@@ -91,7 +92,8 @@ class GooseEnvFullControl(gym.Env, ABC):
         restricted = [OPPOSITE_ACTION_NAMES[actions[i]] for i in range(self._n_agents)]
         [info[y]['allowed_actions'].append(x) for y in range(self._n_agents) for x in ACTION_NAMES
             if ACTION_NAMES[x] != restricted[y]]
-        scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
+        # scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
+        scalars = np.asarray((state[0].observation.step,), dtype=np.uint8)
         return (self._players_obs, scalars), list(reward), done, info
 
     def get_players_obs(self, state, players_obs):
@@ -159,7 +161,7 @@ def get_feature_maps(config, state, old_heads):
     n_geese = len(state['geese'])
     # head, tail, body, previous head plus food
     number_of_layers = n_geese * 4 + 1
-    A = np.zeros((number_of_layers, config.rows*config.columns))
+    A = np.zeros((number_of_layers, config.rows*config.columns), dtype=np.uint8)
     for idx, goose in enumerate(state['geese']):
         A[0 + idx, goose[:1]] = 1  # head
         A[n_geese + idx, goose[-1:]] = 1  # tail
