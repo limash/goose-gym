@@ -61,9 +61,9 @@ def get_cat_policy(env_name):
     env = gym.make(env_name)
     input_shape = env.observation_space.shape[0]
     n_outputs = env.action_space.n
-    min_q_value = 0
-    max_q_value = 51
-    n_atoms = 51
+    min_q_value = -10
+    max_q_value = 100 
+    n_atoms = 111
     cat_n_outputs = n_outputs * n_atoms
     support = tf.linspace(min_q_value, max_q_value, n_atoms)
     support = tf.cast(support, tf.float32)
@@ -144,7 +144,8 @@ if __name__ == '__main__':
     number_of_games = 10
     show_gym(number_of_games)
 
-    # environment = make('hungry_geese', configuration={'min_food': 10})
+    environment = make('hungry_geese', configuration={'min_food': 10})
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
-    # geese = [GeeseAgent(trained_policy) for _ in range(4)]
-    # logs = environment.run([goose.get_action for goose in geese])
+    trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
+    geese = [GeeseAgent(trained_policy) for _ in range(4)]
+    logs = environment.run([goose.get_action for goose in geese])

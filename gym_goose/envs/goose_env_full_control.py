@@ -77,8 +77,10 @@ class GooseEnvFullControl(gym.Env, ABC):
 
         done = [True if state[i].status != 'ACTIVE' else False for i in range(self._n_agents)]
         if all(done):
-            reward = [len(state[0].observation.geese[i]) + any(state[0].observation.geese[i])*state[0].observation.step
-                      for i in range(self._n_agents)]
+            # reward = [len(state[0].observation.geese[i]) +
+            # any(state[0].observation.geese[i])*state[0].observation.step
+            #           for i in range(self._n_agents)]
+            reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
         else:
             # reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
             geese_len_new = np.array([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
