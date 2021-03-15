@@ -8,7 +8,9 @@ import gym
 from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration
 from kaggle_environments import make
 
-from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue, ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from gym_goose.envs.goose_env_full_control import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+# from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue
+from gym_goose.envs.goose_env_full_control import get_feature_maps
 from goose_agent import models
 
 ACTIONS = [0, 1, 2, 3]
@@ -106,7 +108,8 @@ def get_geese_agent(policy):
 
 class GeeseAgent:
     def __init__(self, policy):
-        self._previous_obs = None
+        # self._previous_obs = None
+        self._old_heads = np.zeros((4, 7 * 11), dtype=np.uint8)
         self._policy = policy
 
     def get_action(self, obs_dict, config_dict):
@@ -114,11 +117,14 @@ class GeeseAgent:
         config = Configuration(config_dict)
         state.geese[0], state.geese[state.index] = state.geese[state.index], state.geese[0]
 
-        obs = get_obs(config, state)  # get an observation
-        scalars = np.asarray((state.step / config.episode_steps,))
-        self._previous_obs = get_obs_queue(obs, self._previous_obs)  # put observation into a queue
+        # obs = get_obs(config, state)  # get an observation
+        obs, self._old_heads = get_feature_maps(config,
+                                                state,
+                                                self._old_heads)
+        scalars = np.asarray((state.step,), dtype=np.uint8)
+        # self._previous_obs = get_obs_queue(obs, self._previous_obs)  # put observation into a queue
 
-        action = self._policy((self._previous_obs, scalars))
+        action = self._policy((obs, scalars))
         return action
 
 
@@ -142,10 +148,11 @@ def show_gym(number_of_iterations):
 
 if __name__ == '__main__':
     number_of_games = 10
-    show_gym(number_of_games)
+    # show_gym(number_of_games)
 
     environment = make('hungry_geese', configuration={'min_food': 10})
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
     trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
     geese = [GeeseAgent(trained_policy) for _ in range(4)]
     logs = environment.run([goose.get_action for goose in geese])
+    print("Done")
