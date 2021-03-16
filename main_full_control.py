@@ -148,7 +148,7 @@ def show_gym(number_of_iterations):
 
 if __name__ == '__main__':
     number_of_games = 10
-    # show_gym(number_of_games)
+    show_gym(number_of_games)
 
     environment = make('hungry_geese', configuration={'min_food': 10})
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')

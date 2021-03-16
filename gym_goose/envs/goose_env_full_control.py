@@ -23,7 +23,7 @@ class GooseEnvFullControl(gym.Env, ABC):
     def __init__(self, debug=False):
         self._env = make('hungry_geese',
                          configuration={
-                             'min_food': 10
+                             'min_food': 2
                          },
                          debug=debug)
         self._config = self._env.configuration
@@ -59,6 +59,7 @@ class GooseEnvFullControl(gym.Env, ABC):
         state = self._env.reset(self._n_agents)
         if self._debug:
             printout(state)
+        self._geese_length = np.ones(self._n_agents)  # for rewards
         self._players_obs = [None for _ in range(self._n_agents)]
         self._players_obs = self.get_players_obs(state, self._players_obs)
         # scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
@@ -78,11 +79,12 @@ class GooseEnvFullControl(gym.Env, ABC):
         done = [True if state[i].status != 'ACTIVE' else False for i in range(self._n_agents)]
         if all(done):
             # reward = [len(state[0].observation.geese[i]) +
-            # any(state[0].observation.geese[i])*state[0].observation.step
-            #           for i in range(self._n_agents)]
-            reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
+            # any(state[0].observation.geese[i])*state[0].observation.step for i in range(self._n_agents)]
+            geese_len_new = np.array([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
+            reward = geese_len_new - self._geese_length
+            self._geese_length = geese_len_new
+            reward += [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
         else:
-            # reward = [len(state[0].observation.geese[i]) for i in range(self._n_agents)]
             geese_len_new = np.array([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
             reward = geese_len_new - self._geese_length
             self._geese_length = geese_len_new
