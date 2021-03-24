@@ -42,7 +42,7 @@ def get_dqn_policy(env_name):
     input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
 
-    model = models.get_dqn(input_shape, n_outputs)
+    model = models.get_dqn(input_shape, n_outputs, is_duel=True)
     model.set_weights(init_data['weights'])
 
     def policy(obs):
@@ -61,11 +61,14 @@ def get_cat_policy(env_name):
         raise err
 
     env = gym.make(env_name)
-    input_shape = env.observation_space.shape[0]
+    space = env.observation_space
+    feature_maps_shape = space[0][0].shape  # height, width, channels
+    scalar_features_shape = space[1].shape
+    input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
     min_q_value = -10
-    max_q_value = 100 
-    n_atoms = 111
+    max_q_value = 50 
+    n_atoms = 71
     cat_n_outputs = n_outputs * n_atoms
     support = tf.linspace(min_q_value, max_q_value, n_atoms)
     support = tf.cast(support, tf.float32)
@@ -74,14 +77,8 @@ def get_cat_policy(env_name):
     model.set_weights(init_data['weights'])
 
     def policy(obs):
-        global previous_obs
-
-        if previous_obs is None:
-            previous_obs = obs
-        double_obs = np.concatenate((previous_obs, obs))
-        previous_obs = obs
-
-        logits = model(double_obs[None, ...])
+        obs = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), obs)
+        logits = model(obs)
         logits = tf.reshape(logits, [-1, n_outputs, n_atoms])
         probabilities = tf.nn.softmax(logits)
         Q_values = tf.reduce_sum(support * probabilities, axis=-1)  # Q values expected return
@@ -90,20 +87,20 @@ def get_cat_policy(env_name):
     return policy
 
 
-def get_geese_agent(policy):
-    def geese_agent(obs_dict, config_dict):
-        global previous_obs
-
-        state = Observation(obs_dict)
-        config = Configuration(config_dict)
-
-        obs = get_obs(config, state)  # get an observation
-        scalars = np.asarray((state.step / config.episode_steps,))
-        previous_obs = get_obs_queue(obs, previous_obs)  # put observation into a queue
-
-        action = policy((previous_obs, scalars))
-        return action
-    return geese_agent
+# def get_geese_agent(policy):
+#     def geese_agent(obs_dict, config_dict):
+#         global previous_obs
+#
+#         state = Observation(obs_dict)
+#         config = Configuration(config_dict)
+#
+#         obs = get_obs(config, state)  # get an observation
+#         scalars = np.asarray((state.step / config.episode_steps,))
+#         previous_obs = get_obs_queue(obs, previous_obs)  # put observation into a queue
+#
+#         action = policy((previous_obs, scalars))
+#         return action
+#     return geese_agent
 
 
 class GeeseAgent:
