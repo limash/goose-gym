@@ -10,7 +10,7 @@ from kaggle_environments import make
 
 from gym_goose.envs.goose_env_full_control import ACTION_NAMES, OPPOSITE_ACTION_NAMES
 # from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue
-from gym_goose.envs.goose_env_full_control import get_feature_maps
+from gym_goose.envs.goose_env_full_control import get_feature_maps, to_binary
 from goose_agent import models
 
 ACTIONS = [0, 1, 2, 3]
@@ -108,6 +108,8 @@ class GeeseAgent:
         # self._previous_obs = None
         self._old_heads = np.zeros((4, 7 * 11), dtype=np.uint8)
         self._policy = policy
+        self._n_agents = 4
+        self._binary_positions = 8
 
     def get_action(self, obs_dict, config_dict):
         state = Observation(obs_dict)
@@ -118,7 +120,12 @@ class GeeseAgent:
         obs, self._old_heads = get_feature_maps(config,
                                                 state,
                                                 self._old_heads)
-        scalars = np.asarray((state.step,), dtype=np.uint8)
+        
+        time_step = np.asarray((state.step,), dtype=np.uint8)
+        geese_len = np.array([len(state.geese[i]) for i in range(self._n_agents)], dtype=np.uint8)
+        scalars_decimal = np.concatenate([geese_len, time_step])
+        scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
+        # scalars = np.asarray((state.step,), dtype=np.uint8)
         # self._previous_obs = get_obs_queue(obs, self._previous_obs)  # put observation into a queue
 
         action = self._policy((obs, scalars))
@@ -147,8 +154,7 @@ if __name__ == '__main__':
     number_of_games = 10
     show_gym(number_of_games)
 
-    environment = make('hungry_geese', configuration={'min_food': 10})
-    # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
+    environment = make('hungry_geese', configuration={'min_food': 2})
     trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
     geese = [GeeseAgent(trained_policy) for _ in range(4)]
     logs = environment.run([goose.get_action for goose in geese])
