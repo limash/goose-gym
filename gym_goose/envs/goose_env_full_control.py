@@ -105,7 +105,7 @@ class GooseEnvFullControl(gym.Env, ABC):
         # self._geese_length = geese_len
         death_penalty = np.where(geese_len == 0, -10, 0)
         num_dead = np.count_nonzero(geese_len == 0)
-        alive_bonus = np.where(geese_len > 0, num_dead*0.333, 0)
+        alive_bonus = np.where(geese_len > 0, num_dead * 0.333, 0)
         if all(done):
             # to avoid passing geese_len == [0, 0, 0, 0] to get_len_bonus
             len_bonus = 0
@@ -240,5 +240,17 @@ def get_feature_maps(config, state, old_heads):
     A[3 * n_geese:4 * n_geese, :] = old_heads
     A[4 * n_geese, state['food']] = 1
     B = A.reshape((-1, config.rows, config.columns))
-    C = np.moveaxis(B, 0, -1)
+
+    # centering the player's goose
+    center = (3, 5)  # row, column
+    try:
+        head_coords = np.argwhere(B[0, :, :] == 1)[0]
+        row_shift = center[0] - head_coords[0]
+        column_shift = center[1] - head_coords[1]
+        B1 = np.roll(B, row_shift, axis=1)
+        B2 = np.roll(B1, column_shift, axis=2)
+    except IndexError:  # if the goose is dead
+        B2 = B
+
+    C = np.moveaxis(B2, 0, -1)
     return C, A[:n_geese, :]
