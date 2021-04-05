@@ -7,5 +7,10 @@ register(
 
 register(
     id='goose-full_control-v0',
-    entry_point='gym_goose.envs:GooseEnvFullControl',
+    entry_point='gym_goose.envs:GooseEnvFullControlSimple',
+)
+
+register(
+    id='goose-full_control-v1',
+    entry_point='gym_goose.envs:GooseEnvFullControlChallenge',
 )

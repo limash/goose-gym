@@ -8,9 +8,9 @@ import gym
 from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration
 from kaggle_environments import make
 
-from gym_goose.envs.goose_env_full_control import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from gym_goose.envs.goose_env_full_control_challenge import ACTION_NAMES, OPPOSITE_ACTION_NAMES
 # from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue
-from gym_goose.envs.goose_env_full_control import get_feature_maps, to_binary
+from gym_goose.envs.goose_env_full_control_challenge import get_feature_maps, to_binary
 from goose_agent import models
 
 ACTIONS = [0, 1, 2, 3]
@@ -45,8 +45,8 @@ def get_dqn_policy(env_name):
     model = models.get_dqn(input_shape, n_outputs, is_duel=True)
     model.set_weights(init_data['weights'])
 
-    def policy(obs):
-        obs = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), obs)
+    def policy(obs_in):
+        obs = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), obs_in)
         Q_values = model(obs)
         int_act = np.argmax(Q_values[0])
         return ACTION_NAMES[int_act]
@@ -66,8 +66,8 @@ def get_cat_policy(env_name):
     scalar_features_shape = space[1].shape
     input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
-    min_q_value = -10
-    max_q_value = 50 
+    min_q_value = -5
+    max_q_value = 20 
     n_atoms = 71
     cat_n_outputs = n_outputs * n_atoms
     support = tf.linspace(min_q_value, max_q_value, n_atoms)
@@ -121,8 +121,8 @@ class GeeseAgent:
                                                 state,
                                                 self._old_heads)
         
-        time_step = np.asarray((state.step,), dtype=np.uint8)
-        geese_len = np.array([len(state.geese[i]) for i in range(self._n_agents)], dtype=np.uint8)
+        time_step = np.asarray((state.step,))
+        geese_len = np.array([len(state.geese[i]) for i in range(self._n_agents)])
         scalars_decimal = np.concatenate([geese_len, time_step])
         scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
         # scalars = np.asarray((state.step,), dtype=np.uint8)
@@ -152,10 +152,11 @@ def show_gym(number_of_iterations):
 
 if __name__ == '__main__':
     number_of_games = 10
-    show_gym(number_of_games)
+    # show_gym(number_of_games)
 
     environment = make('hungry_geese', configuration={'min_food': 2})
-    trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
+    # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')
+    trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
     geese = [GeeseAgent(trained_policy) for _ in range(4)]
     logs = environment.run([goose.get_action for goose in geese])
     print("Done")
