@@ -28,7 +28,7 @@ def random_policy(unused_input):
     return ACTION_NAMES[action]
 
 
-def get_dqn_policy(env_name):
+def get_dqn_policy(env_name, is_duel=False):
     try:
         with open('data/data.pickle', 'rb') as file:
             init_data = pickle.load(file)
@@ -42,7 +42,7 @@ def get_dqn_policy(env_name):
     input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
 
-    model = models.get_dqn(input_shape, n_outputs, is_duel=True)
+    model = models.get_dqn(input_shape, n_outputs, is_duel=is_duel)
     model.set_weights(init_data['weights'])
 
     def policy(obs_in):
