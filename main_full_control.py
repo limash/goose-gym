@@ -137,7 +137,7 @@ def show_gym(number_of_iterations):
     for i in range(number_of_iterations):
         t0 = time.time()
         obs = env.reset()
-        n_players = len(obs[0])
+        n_players = len(obs)
         available_actions = [0, 1, 2, 3]
         actions = [random.choice(available_actions) for _ in range(n_players)]
         for step in range(200):
@@ -152,7 +152,7 @@ def show_gym(number_of_iterations):
 
 if __name__ == '__main__':
     number_of_games = 10
-    # show_gym(number_of_games)
+    show_gym(number_of_games)
 
     environment = make('hungry_geese', configuration={'min_food': 2})
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v0')

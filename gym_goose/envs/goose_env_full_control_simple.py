@@ -36,41 +36,33 @@ class GooseEnvFullControl(gym.Env, ABC):
                            for _ in range(self._n_agents)]
 
         self.action_space = spaces.Discrete(4)
+        self._binary_positions = 8
         # 4 maps for -3, -2, -1, 0 steps
         # observations = tuple([spaces.Box(low=-0.5,
         #                                  high=1,
         #                                  shape=(self._config.rows, self._config.columns, 4),
         #                                  dtype=np.float64)
         #                       for _ in range(self._n_agents)])
-        observations = tuple([spaces.Box(low=0,
-                                         high=1,
-                                         # for each agent positions of head, tail, body, previous head + food position
-                                         shape=(self._config.rows, self._config.columns, self._n_agents * 4 + 1),
-                                         dtype=np.uint8)
-                              for _ in range(self._n_agents)])
-        self._binary_positions = 8
-        self.observation_space = spaces.Tuple((
-            spaces.Tuple(observations),
-            spaces.Box(low=0,
-                       high=1,
-                       # 4 geese and time
-                       shape=(self._binary_positions * 5,),
-                       dtype=np.uint8)
-        ))
+        observation = spaces.Box(low=0, high=1,
+                                 # for each agent positions of head, tail, body, previous head + food position
+                                 shape=(self._config.rows, self._config.columns, self._n_agents * 4 + 1),
+                                 dtype=np.uint8)
+        scalars = spaces.Box(low=0,
+                             high=1,
+                             # 4 geese and time
+                             shape=(self._binary_positions * 5,),
+                             dtype=np.uint8)
+        observations = tuple([spaces.Tuple((observation, scalars)) for _ in range(self._n_agents)])
+        self.observation_space = spaces.Tuple(observations)
+        # self.observation_space = observations
 
     def reset(self):
         state = self._env.reset(self._n_agents)
         if self._debug:
             printout(state)
-        # map observation
         self._players_obs = [None for _ in range(self._n_agents)]
         self._players_obs = self.get_players_obs(state, self._players_obs)
-        # scalar observations
-        time_step = np.asarray((state[0].observation.step,))
-        geese_len = np.array([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
-        scalars_decimal = np.concatenate([geese_len, time_step])
-        scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
-        return self._players_obs, scalars
+        return self._players_obs
 
     def step(self, actions):
         action_names = [ACTION_NAMES[action] for action in actions]
@@ -86,15 +78,16 @@ class GooseEnvFullControl(gym.Env, ABC):
 
         # get scalar observations
         # scalars = np.asarray((state[0].observation.step / self._config.episodeSteps,))
-        time_step = np.asarray((state[0].observation.step,))
+        # time_step = np.asarray((state[0].observation.step,))
         geese_len = np.array([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
-        scalars_decimal = np.concatenate([geese_len, time_step])
-        scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
+        # scalars_decimal = np.concatenate([geese_len, time_step])
+        # scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
 
         # calculate rewards for all geese
         done = [True if state[i].status != 'ACTIVE' else False for i in range(self._n_agents)]
         if all(done):
-            reward = [len(state[0].observation.geese[i]) + any(state[0].observation.geese[i])*10 for i in range(self._n_agents)]
+            reward = [len(state[0].observation.geese[i]) + any(state[0].observation.geese[i]) * 10 for i in
+                      range(self._n_agents)]
             # reward = [len(state[0].observation.geese[i]) +
             #           any(state[0].observation.geese[i]) * state[0].observation.step for i in range(self._n_agents)]
             reward += (geese_len - self._geese_length)
@@ -126,17 +119,27 @@ class GooseEnvFullControl(gym.Env, ABC):
         [info[y]['allowed_actions'].append(x) for y in range(self._n_agents) for x in ACTION_NAMES
          if ACTION_NAMES[x] != restricted[y]]
 
-        return (self._players_obs, scalars), list(reward), done, info
+        return self._players_obs, list(reward), done, info
 
     def get_players_obs(self, state, players_obs):
         geese_deque = deque(state[0].observation['geese'])
+        geese_len_deque = deque([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
+        time_step = np.asarray((state[0].observation.step,))
         for i in range(self._n_agents):
             # obs = get_obs(self._env.configuration, state[0].observation)  # get an observation
             # players_obs[i] = get_obs_queue(obs, players_obs[i])  # put observation into a queue
-            players_obs[i], self._old_heads[i] = get_feature_maps(self._env.configuration,
-                                                                  state[0].observation,
-                                                                  self._old_heads[i])
+            observation, self._old_heads[i] = get_feature_maps(self._env.configuration,
+                                                               state[0].observation,
+                                                               self._old_heads[i])
+            # scalar observations
+            geese_len = np.array(geese_len_deque)
+            scalars_decimal = np.concatenate([geese_len, time_step])
+            scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
+            # store observations
+            players_obs[i] = (observation, scalars)
+            # rotate geese
             geese_deque.rotate(-1)
+            geese_len_deque.rotate(-1)
             state[0].observation['geese'] = geese_deque
         return players_obs
 
