@@ -19,3 +19,8 @@ register(
     id='goose-full_control-v2',
     entry_point='gym_goose.envs:GooseEnvFullControlLength',
 )
+
+register(
+    id='goose-full_control-v3',
+    entry_point='gym_goose.envs:GooseEnvFullControlFinal',
+)

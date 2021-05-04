@@ -1,4 +1,5 @@
 from gym_goose.envs.goose_env import GooseEnv
 from gym_goose.envs.goose_env_full_control_simple import GooseEnvFullControl as GooseEnvFullControlSimple
+from gym_goose.envs.goose_env_full_control_final import GooseEnvFullControl as GooseEnvFullControlFinal
 from gym_goose.envs.goose_env_full_control_challenge import GooseEnvFullControl as GooseEnvFullControlChallenge
 from gym_goose.envs.goose_env_full_control_length import GooseEnvFullControl as GooseEnvFullControlLength

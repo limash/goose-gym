@@ -38,7 +38,7 @@ def get_dqn_policy(env_name, is_duel=False):
     env = gym.make(env_name)
     space = env.observation_space
     feature_maps_shape = space[0][0].shape  # height, width, channels
-    scalar_features_shape = space[1].shape
+    scalar_features_shape = space[0][1].shape
     input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
 
@@ -133,7 +133,7 @@ class GeeseAgent:
 
 
 def show_gym(number_of_iterations):
-    env = gym.make('gym_goose:goose-full_control-v0', debug=True)
+    env = gym.make('gym_goose:goose-full_control-v3', debug=True)
     for i in range(number_of_iterations):
         t0 = time.time()
         obs = env.reset()
@@ -151,7 +151,7 @@ def show_gym(number_of_iterations):
 
 
 if __name__ == '__main__':
-    number_of_games = 10
+    number_of_games = 100
     show_gym(number_of_games)
 
     environment = make('hungry_geese', configuration={'min_food': 2})
