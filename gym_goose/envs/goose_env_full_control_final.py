@@ -23,7 +23,7 @@ class GooseEnvFullControl(gym.Env, ABC):
     def __init__(self, debug=False):
         self._env = make('hungry_geese',
                          configuration={
-                             'min_food': 10
+                             'min_food': 2
                          },
                          debug=debug)
         self._config = self._env.configuration
