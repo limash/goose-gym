@@ -87,6 +87,32 @@ def get_cat_policy(env_name):
     return policy
 
 
+def get_pg_policy(env_name):
+    try:
+        with open('data/data.pickle', 'rb') as file:
+            init_data = pickle.load(file)
+    except FileNotFoundError as err:
+        raise err
+
+    env = gym.make(env_name)
+    space = env.observation_space
+    feature_maps_shape = space[0][0].shape  # height, width, channels
+    scalar_features_shape = space[0][1].shape
+    input_shape = (feature_maps_shape, scalar_features_shape)
+    n_outputs = env.action_space.n
+
+    model = models.get_actor_critic(input_shape, n_outputs)
+    model.set_weights(init_data['weights'])
+
+    def policy(obs_in):
+        obs = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), obs_in)
+        policy_logits, _ = model(obs)
+        int_act = tf.random.categorical(policy_logits, num_samples=1, dtype=tf.int32)
+        probs = tf.nn.softmax(policy_logits)
+        return ACTION_NAMES[int_act.numpy()[0][0]]
+    return policy
+
+
 # def get_geese_agent(policy):
 #     def geese_agent(obs_dict, config_dict):
 #         global previous_obs
@@ -152,11 +178,12 @@ def show_gym(number_of_iterations):
 
 if __name__ == '__main__':
     number_of_games = 100
-    show_gym(number_of_games)
+    # show_gym(number_of_games)
 
     environment = make('hungry_geese', configuration={'min_food': 2})
-    trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
+    # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
+    trained_policy = get_pg_policy('gym_goose:goose-full_control-v3')
     geese = [GeeseAgent(trained_policy) for _ in range(4)]
     logs = environment.run([goose.get_action for goose in geese])
     print("Done")
