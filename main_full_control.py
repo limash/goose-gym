@@ -11,7 +11,7 @@ from kaggle_environments import make
 from gym_goose.envs.goose_env_full_control_challenge import ACTION_NAMES, OPPOSITE_ACTION_NAMES
 # from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue
 from gym_goose.envs.goose_env_full_control_challenge import get_feature_maps, to_binary
-from goose_agent import models
+from tf_reinforcement_agents import models
 
 ACTIONS = [0, 1, 2, 3]
 previous_obs = None
