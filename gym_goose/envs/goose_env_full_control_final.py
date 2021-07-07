@@ -88,7 +88,7 @@ class GooseEnvFullControl(gym.Env, ABC):
         # calculate rewards for all geese
         alive = [1 if geese_len[i] > 0 else 0 for i in range(self._n_agents)]
         current_alive = sum(alive)
-        if current_alive < self._num_alive:
+        if current_alive < self._num_alive or all(done):
             deaths = self._num_alive - current_alive
             self._num_alive = current_alive
             if all(done) and current_alive == 1:
@@ -107,6 +107,9 @@ class GooseEnvFullControl(gym.Env, ABC):
                     place = get_len_place(prev_place)
                 # mask previously dead geese
                 masked = np.where(self._geese_length == 0, 1, 0)
+            elif all(done) and current_alive > 1:
+                place = get_len_place(self._geese_length)
+                masked = np.where(self._geese_length == 0, 1, 0)
             else:
                 place = get_len_place(self._geese_length)
                 # mask alive and previously dead geese
@@ -121,14 +124,21 @@ class GooseEnvFullControl(gym.Env, ABC):
                     rewards.append(0)
             for _ in range(deaths):
                 self._rewards.pop(0)
-
         else:
             rewards = [0, 0, 0, 0]
 
-        if all(done):
-            for i in range(self._n_agents):
-                if alive[i] == 1:
-                    rewards[i] = 1
+        # if all(done) and current_alive > 1:
+        #     place = get_len_place(self._geese_length)
+        #     masked = np.where(self._geese_length == 0, 1, 0)
+        #     foo = np.ma.masked_array(place, mask=masked)
+        #     bar = foo - foo.min()
+        #     for item in bar:
+        #         if type(item) == np.int64:
+        #             rewards.append(self._rewards[item])
+        #         else:
+        #             rewards.append(0)
+        #     for _ in range(deaths):
+        #         self._rewards.pop(0)
 
         self._geese_length = geese_len
 

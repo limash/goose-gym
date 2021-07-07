@@ -14,6 +14,10 @@ from gym_goose.envs.goose_env_full_control_challenge import get_feature_maps, to
 from tf_reinforcement_agents import models
 
 ACTIONS = [0, 1, 2, 3]
+ACTION_INTS = {'NORTH': 0,
+               'SOUTH': 1,
+               'WEST': 2,
+               'EAST': 3}
 previous_obs = None
 
 
@@ -158,17 +162,27 @@ class GeeseAgent:
         return action
 
 
-def show_gym(number_of_iterations):
+def show_gym(number_of_iterations, policy=None):
     env = gym.make('gym_goose:goose-full_control-v3', debug=True)
     for i in range(number_of_iterations):
+        all_rewards = np.zeros(4)
         t0 = time.time()
         obs = env.reset()
         n_players = len(obs)
         available_actions = [0, 1, 2, 3]
-        actions = [random.choice(available_actions) for _ in range(n_players)]
+        if policy is None:
+            actions = [random.choice(available_actions) for _ in range(n_players)]
+        else:
+            actions = [policy(obs[i]) for i in range(n_players)]
         for step in range(200):
+            if policy is not None:
+                actions = [ACTION_INTS[action] for action in actions]
             obs, reward, done, info = env.step(actions)
-            actions = [random.choice(info[i]['allowed_actions']) for i in range(n_players)]
+            all_rewards += np.array(reward)
+            if policy is None:
+                actions = [random.choice(info[i]['allowed_actions']) for i in range(n_players)]
+            else:
+                actions = [policy(obs[i]) for i in range(n_players)]
             if all(done):
                 break
         t1 = time.time()
@@ -177,13 +191,15 @@ def show_gym(number_of_iterations):
 
 
 if __name__ == '__main__':
-    number_of_games = 100
-    # show_gym(number_of_games)
+    number_of_games = 1
 
-    environment = make('hungry_geese', configuration={'min_food': 2})
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
     trained_policy = get_pg_policy('gym_goose:goose-full_control-v3')
-    geese = [GeeseAgent(trained_policy) for _ in range(4)]
-    logs = environment.run([goose.get_action for goose in geese])
-    print("Done")
+
+    show_gym(number_of_games, trained_policy)
+
+    # geese = [GeeseAgent(trained_policy) for _ in range(4)]
+    # environment = make('hungry_geese', configuration={'min_food': 2})
+    # logs = environment.run([goose.get_action for goose in geese])
+    # print("Done")
