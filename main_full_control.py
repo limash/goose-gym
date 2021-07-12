@@ -174,7 +174,7 @@ def show_gym(number_of_iterations, policy=None):
             actions = [random.choice(available_actions) for _ in range(n_players)]
         else:
             actions = [policy(obs[i]) for i in range(n_players)]
-        for step in range(200):
+        for step in range(199):
             if policy is not None:
                 actions = [ACTION_INTS[action] for action in actions]
             obs, reward, done, info = env.step(actions)

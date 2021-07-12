@@ -127,19 +127,6 @@ class GooseEnvFullControl(gym.Env, ABC):
         else:
             rewards = [0, 0, 0, 0]
 
-        # if all(done) and current_alive > 1:
-        #     place = get_len_place(self._geese_length)
-        #     masked = np.where(self._geese_length == 0, 1, 0)
-        #     foo = np.ma.masked_array(place, mask=masked)
-        #     bar = foo - foo.min()
-        #     for item in bar:
-        #         if type(item) == np.int64:
-        #             rewards.append(self._rewards[item])
-        #         else:
-        #             rewards.append(0)
-        #     for _ in range(deaths):
-        #         self._rewards.pop(0)
-
         self._geese_length = geese_len
 
         # add to info allowed actions information (allowed != opposite to the previous actions)
