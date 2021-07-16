@@ -195,9 +195,9 @@ if __name__ == '__main__':
 
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
-    trained_policy = get_pg_policy('gym_goose:goose-full_control-v3')
+    # trained_policy = get_pg_policy('gym_goose:goose-full_control-v3')
 
-    show_gym(number_of_games, trained_policy)
+    show_gym(number_of_games)  # , trained_policy)
 
     # geese = [GeeseAgent(trained_policy) for _ in range(4)]
     # environment = make('hungry_geese', configuration={'min_food': 2})
