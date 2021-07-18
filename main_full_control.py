@@ -71,7 +71,7 @@ def get_cat_policy(env_name):
     input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
     min_q_value = -5
-    max_q_value = 20 
+    max_q_value = 20
     n_atoms = 71
     cat_n_outputs = n_outputs * n_atoms
     support = tf.linspace(min_q_value, max_q_value, n_atoms)
@@ -105,7 +105,13 @@ def get_pg_policy(env_name):
     input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
 
-    model = models.get_actor_critic(input_shape, n_outputs)
+    # model = models.get_actor_critic(input_shape, n_outputs)
+    model = models.get_actor_critic2()
+    # call a model once to build it before setting weights
+    dummy_input = (tf.ones(feature_maps_shape, dtype=tf.uint8),
+                   tf.ones(scalar_features_shape, dtype=tf.uint8))
+    dummy_input = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), dummy_input)
+    model(dummy_input)
     model.set_weights(init_data['weights'])
 
     def policy(obs_in):
@@ -150,7 +156,7 @@ class GeeseAgent:
         obs, self._old_heads = get_feature_maps(config,
                                                 state,
                                                 self._old_heads)
-        
+
         time_step = np.asarray((state.step,))
         geese_len = np.array([len(state.geese[i]) for i in range(self._n_agents)])
         scalars_decimal = np.concatenate([geese_len, time_step])
