@@ -91,9 +91,9 @@ def get_cat_policy(env_name):
     return policy
 
 
-def get_pg_policy(env_name):
+def get_pg_policy(env_name, file='data/data.pickle'):
     try:
-        with open('data/data.pickle', 'rb') as file:
+        with open(file, 'rb') as file:
             init_data = pickle.load(file)
     except FileNotFoundError as err:
         raise err
