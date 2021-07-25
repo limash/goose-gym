@@ -8,7 +8,7 @@ import gym
 from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration
 # from kaggle_environments import make
 
-from gym_goose.envs.goose_env import get_obs, ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from gym_goose.envs.goose_env_0 import get_obs, ACTION_NAMES, OPPOSITE_ACTION_NAMES
 from tf_reinforcement_testcases import models
 
 ACTIONS = [0, 1, 2, 3]

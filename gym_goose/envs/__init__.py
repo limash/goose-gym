@@ -1,5 +1,6 @@
-from gym_goose.envs.goose_env import GooseEnv
-from gym_goose.envs.goose_env_full_control_simple import GooseEnvFullControl as GooseEnvFullControlSimple
-from gym_goose.envs.goose_env_full_control_final import GooseEnvFullControl as GooseEnvFullControlFinal
-from gym_goose.envs.goose_env_full_control_challenge import GooseEnvFullControl as GooseEnvFullControlChallenge
-from gym_goose.envs.goose_env_full_control_length import GooseEnvFullControl as GooseEnvFullControlLength
+from gym_goose.envs.goose_env_0 import GooseEnv as GooseEnv0
+from gym_goose.envs.goose_env_1 import GooseEnv as GooseEnv1
+from gym_goose.envs.goose_env_2 import GooseEnv as GooseEnv2
+from gym_goose.envs.goose_env_3 import GooseEnv as GooseEnv3
+from gym_goose.envs.goose_env_4 import GooseEnv as GooseEnv4
+from gym_goose.envs.goose_env_5 import GooseEnv as GooseEnv5

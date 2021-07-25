@@ -8,9 +8,9 @@ import gym
 from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration
 from kaggle_environments import make
 
-from gym_goose.envs.goose_env_full_control_challenge import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from gym_goose.envs.goose_env_3 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
 # from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue
-from gym_goose.envs.goose_env_full_control_challenge import get_feature_maps, to_binary
+from gym_goose.envs.goose_env_3 import get_feature_maps, to_binary
 from tf_reinforcement_agents import models
 
 ACTIONS = [0, 1, 2, 3]
@@ -169,7 +169,7 @@ class GeeseAgent:
 
 
 def show_gym(number_of_iterations, policy=None):
-    env = gym.make('gym_goose:goose-full_control-v3', debug=True)
+    env = gym.make('gym_goose:goose-v4', debug=True)
     for i in range(number_of_iterations):
         all_rewards = np.zeros(4)
         t0 = time.time()

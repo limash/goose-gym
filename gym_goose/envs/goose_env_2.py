@@ -18,7 +18,7 @@ OPPOSITE_ACTION_NAMES = {0: 'SOUTH',
                          3: 'WEST'}
 
 
-class GooseEnvFullControl(gym.Env, ABC):
+class GooseEnv(gym.Env, ABC):
 
     def __init__(self, debug=False):
         self._env = make('hungry_geese',

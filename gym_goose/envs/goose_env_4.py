@@ -18,7 +18,7 @@ OPPOSITE_ACTION_NAMES = {0: 'SOUTH',
                          3: 'WEST'}
 
 
-class GooseEnvFullControl(gym.Env, ABC):
+class GooseEnv(gym.Env, ABC):
 
     def __init__(self, debug=False):
         self._env = make('hungry_geese',
@@ -276,16 +276,15 @@ def get_feature_maps(config, state, old_heads):
     B = A.reshape((-1, config.rows, config.columns))
 
     # centering the player's goose
-    # center = (3, 5)  # row, column
-    # try:
-    #     head_coords = np.argwhere(B[0, :, :] == 1)[0]
-    #     row_shift = center[0] - head_coords[0]
-    #     column_shift = center[1] - head_coords[1]
-    #     B1 = np.roll(B, row_shift, axis=1)
-    #     B2 = np.roll(B1, column_shift, axis=2)
-    # except IndexError:  # if the goose is dead
-    #     B2 = B
-    B2 = B
+    center = (3, 5)  # row, column
+    try:
+        head_coords = np.argwhere(B[0, :, :] == 1)[0]
+        row_shift = center[0] - head_coords[0]
+        column_shift = center[1] - head_coords[1]
+        B1 = np.roll(B, row_shift, axis=1)
+        B2 = np.roll(B1, column_shift, axis=2)
+    except IndexError:  # if the goose is dead
+        B2 = B
 
     C = np.moveaxis(B2, 0, -1)
     return C, A[:n_geese, :]
