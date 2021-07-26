@@ -169,7 +169,7 @@ class GeeseAgent:
 
 
 def show_gym(number_of_iterations, policy=None):
-    env = gym.make('gym_goose:goose-v4', debug=True)
+    env = gym.make('gym_goose:goose-v5', debug=True)
     for i in range(number_of_iterations):
         all_rewards = np.zeros(4)
         t0 = time.time()
