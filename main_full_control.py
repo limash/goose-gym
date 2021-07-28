@@ -5,12 +5,13 @@ import pickle
 import numpy as np
 import tensorflow as tf
 import gym
-from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration
+from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration, Action, row_col
 from kaggle_environments import make
 
-from gym_goose.envs.goose_env_3 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
-# from gym_goose.envs.goose_env_full_control import get_obs, get_obs_queue
-from gym_goose.envs.goose_env_3 import get_feature_maps, to_binary
+# from gym_goose.envs.goose_env_3 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+# from gym_goose.envs.goose_env_3 import get_feature_maps, to_binary
+from gym_goose.envs.goose_env_5 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from gym_goose.envs.goose_env_5 import get_feature_maps, to_binary
 from tf_reinforcement_agents import models
 
 ACTIONS = [0, 1, 2, 3]
@@ -54,6 +55,7 @@ def get_dqn_policy(env_name, is_duel=False):
         Q_values = model(obs)
         int_act = np.argmax(Q_values[0])
         return ACTION_NAMES[int_act]
+
     return policy
 
 
@@ -88,6 +90,7 @@ def get_cat_policy(env_name):
         Q_values = tf.reduce_sum(support * probabilities, axis=-1)  # Q values expected return
         int_act = np.argmax(Q_values[0])
         return ACTION_NAMES[int_act]
+
     return policy
 
 
@@ -106,7 +109,7 @@ def get_pg_policy(env_name, file='data/data.pickle'):
     n_outputs = env.action_space.n
 
     # model = models.get_actor_critic(input_shape, n_outputs)
-    model = models.get_actor_critic2()
+    model = models.get_actor_critic3()
     # call a model once to build it before setting weights
     dummy_input = (tf.ones(feature_maps_shape, dtype=tf.uint8),
                    tf.ones(scalar_features_shape, dtype=tf.uint8))
@@ -120,6 +123,7 @@ def get_pg_policy(env_name, file='data/data.pickle'):
         int_act = tf.random.categorical(policy_logits, num_samples=1, dtype=tf.int32)
         probs = tf.nn.softmax(policy_logits)
         return ACTION_NAMES[int_act.numpy()[0][0]]
+
     return policy
 
 
@@ -141,8 +145,8 @@ def get_pg_policy(env_name, file='data/data.pickle'):
 
 class GeeseAgent:
     def __init__(self, policy):
-        # self._previous_obs = None
-        self._old_heads = np.zeros((4, 7 * 11), dtype=np.uint8)
+        self._actions = None
+        self._heads = None
         self._policy = policy
         self._n_agents = 4
         self._binary_positions = 8
@@ -152,17 +156,44 @@ class GeeseAgent:
         config = Configuration(config_dict)
         state.geese[0], state.geese[state.index] = state.geese[state.index], state.geese[0]
 
-        # obs = get_obs(config, state)  # get an observation
-        obs, self._old_heads = get_feature_maps(config,
-                                                state,
-                                                self._old_heads)
+        if self._actions is None:
+            self._actions = [0 for _ in range(self._n_agents)]
+            self._heads = [row_col(state.geese[0][0], config.columns),
+                           row_col(state.geese[1][0], config.columns),
+                           row_col(state.geese[2][0], config.columns),
+                           row_col(state.geese[3][0], config.columns)]
+        else:
+            # heads = [row_col(state.geese[0][0], config.columns),
+            #          row_col(state.geese[1][0], config.columns),
+            #          row_col(state.geese[2][0], config.columns),
+            #          row_col(state.geese[3][0], config.columns)]
+            heads = [None, None, None, None]
+            for i in range(4):
+                try:
+                    heads[i] = row_col(state.geese[i][0], config.columns)
+                    if (heads[i][0] < self._heads[i][0] and not(heads[i][0] == 0 and self._heads[i][0] == 6)
+                            or (heads[i][0] == 6 and self._heads[i][0] == 0)):
+                        self._actions[i] = 1  # north (+1 to geese style)
+                    elif (heads[i][0] > self._heads[i][0] and not (heads[i][0] == 6 and self._heads[i][0] == 0)
+                          or (heads[i][0] == 0 and self._heads[i][0] == 6)):
+                        self._actions[i] = 2  # south
+                    elif (heads[i][1] < self._heads[i][1] and not (heads[i][1] == 0 and self._heads[i][1] == 10)
+                          or (heads[i][1] == 10 and self._heads[i][1] == 0)):
+                        self._actions[i] = 3  # west
+                    elif (heads[i][1] > self._heads[i][1] and not (heads[i][1] == 10 and self._heads[i][1] == 0)
+                          or (heads[i][1] == 0 and self._heads[i][1] == 10)):
+                        self._actions[i] = 4  # east
+                except IndexError:
+                    self._actions[i] = 0
+            self._heads = heads
+
+        obs = get_feature_maps(config, state, self._actions)
 
         time_step = np.asarray((state.step,))
-        geese_len = np.array([len(state.geese[i]) for i in range(self._n_agents)])
-        scalars_decimal = np.concatenate([geese_len, time_step])
-        scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
-        # scalars = np.asarray((state.step,), dtype=np.uint8)
-        # self._previous_obs = get_obs_queue(obs, self._previous_obs)  # put observation into a queue
+        times = to_binary(time_step, self._binary_positions).ravel()
+        food = np.zeros((config.rows * config.columns), dtype=np.uint8)
+        food[state['food']] = 1
+        scalars = np.concatenate([food, times])
 
         action = self._policy((obs, scalars))
         return action
@@ -192,8 +223,8 @@ def show_gym(number_of_iterations, policy=None):
             if all(done):
                 break
         t1 = time.time()
-        print(f"A number of steps is {step+1}")
-        print(f"Time elapsed is {t1-t0}")
+        print(f"A number of steps is {step + 1}")
+        print(f"Time elapsed is {t1 - t0}")
 
 
 if __name__ == '__main__':
@@ -201,11 +232,11 @@ if __name__ == '__main__':
 
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
-    # trained_policy = get_pg_policy('gym_goose:goose-full_control-v3')
+    trained_policy = get_pg_policy('gym_goose:goose-v5')
 
     show_gym(number_of_games)  # , trained_policy)
 
-    # geese = [GeeseAgent(trained_policy) for _ in range(4)]
-    # environment = make('hungry_geese', configuration={'min_food': 2})
-    # logs = environment.run([goose.get_action for goose in geese])
-    # print("Done")
+    geese = [GeeseAgent(trained_policy) for _ in range(4)]
+    environment = make('hungry_geese', configuration={'min_food': 2})
+    logs = environment.run([goose.get_action for goose in geese])
+    print("Done")

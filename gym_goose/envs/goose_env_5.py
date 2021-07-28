@@ -45,8 +45,8 @@ class GooseEnv(gym.Env, ABC):
         #                                  dtype=np.float64)
         #                       for _ in range(self._n_agents)])
         observation = spaces.Box(low=0, high=1,
-                                 # bodies on map with 3 digits for an action
-                                 shape=(self._n_agents, self._config.rows * self._config.columns + 3),
+                                 # bodies on map with 3 digits for an action and a goose number
+                                 shape=(self._n_agents, self._config.rows * self._config.columns + 2*3),
                                  dtype=np.uint8)
         scalars = spaces.Box(low=0,
                              high=1,
@@ -75,7 +75,12 @@ class GooseEnv(gym.Env, ABC):
     def step(self, actions):
         action_names = [ACTION_NAMES[action] for action in actions]
         self._actions = [action + 1 for action in actions]
+
         state = self._env.step(action_names)
+        for i in range(self._n_agents):
+            if state[i].status == 'DONE':
+                self._actions[i] = 0
+
         if self._debug:
             printout(state)
             if any([] == x for x in state[0].observation['geese']):
@@ -266,7 +271,7 @@ def get_obs_queue(obs, old_obs_queue):
 
 
 def get_feature_maps(config, state, actions):
-    action_bin = np.array([[0, 0, 0],
+    numbers_bin = np.array([[0, 0, 0],
                            [0, 0, 1],
                            [0, 1, 0],
                            [0, 1, 1],
@@ -274,9 +279,10 @@ def get_feature_maps(config, state, actions):
     base = 3
     n_geese = len(state['geese'])
     number_of_layers = n_geese
-    A = np.zeros((number_of_layers, config.rows * config.columns + base), dtype=np.uint8)
+    A = np.zeros((number_of_layers, config.rows * config.columns + 2*base), dtype=np.uint8)
     for i, goose in enumerate(state['geese']):
         A[i, goose] = 1
-        A[i, -3:] = action_bin[actions[i]]
+        A[i, -6:-3] = numbers_bin[actions[i]]
+        A[i, -3:] = numbers_bin[i + 1] if goose else numbers_bin[0]
 
     return A
