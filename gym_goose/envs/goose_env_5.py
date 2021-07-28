@@ -32,9 +32,10 @@ class GooseEnv(gym.Env, ABC):
         self._n_agents = 4
         self._geese_length = np.ones(self._n_agents)  # for rewards
         self._players_obs = None
-        self._old_heads = [np.zeros((self._n_agents, self._config.rows * self._config.columns), dtype=np.uint8)
-                           for _ in range(self._n_agents)]
-        self._actions = [0 for _ in range(self._n_agents)]
+        self._old_heads = [np.zeros(4, dtype=np.uint8) for _ in range(self._n_agents)]
+        # self._old_heads = [np.zeros((self._n_agents, self._config.rows * self._config.columns), dtype=np.uint8)
+        #                    for _ in range(self._n_agents)]
+        # self._actions = [0 for _ in range(self._n_agents)]
 
         self.action_space = spaces.Discrete(4)
         self._binary_positions = 8
@@ -45,13 +46,13 @@ class GooseEnv(gym.Env, ABC):
         #                                  dtype=np.float64)
         #                       for _ in range(self._n_agents)])
         observation = spaces.Box(low=0, high=1,
-                                 # bodies on map with 3 digits for an action and a goose number
-                                 shape=(self._n_agents, self._config.rows * self._config.columns + 2*3),
+                                 # goose number, goose length, head, previous head, tail, goose coordinates
+                                 shape=(self._n_agents, 5 + self._config.rows * self._config.columns // 2),
                                  dtype=np.uint8)
         scalars = spaces.Box(low=0,
                              high=1,
-                             # food on map + 8 digits for time
-                             shape=(self._config.rows * self._config.columns + self._binary_positions,),
+                             # time and 2 foods
+                             shape=(3,),
                              dtype=np.uint8)
         observations = tuple([spaces.Tuple((observation, scalars)) for _ in range(self._n_agents)])
         self.observation_space = spaces.Tuple(observations)
@@ -65,7 +66,8 @@ class GooseEnv(gym.Env, ABC):
         self._num_alive = 4
 
         state = self._env.reset(self._n_agents)
-        self._actions = [0 for _ in range(self._n_agents)]
+        # self._actions = [0 for _ in range(self._n_agents)]
+        self._old_heads = [np.zeros(4, dtype=np.uint8) for _ in range(self._n_agents)]
         if self._debug:
             printout(state)
         self._players_obs = [None for _ in range(self._n_agents)]
@@ -74,12 +76,12 @@ class GooseEnv(gym.Env, ABC):
 
     def step(self, actions):
         action_names = [ACTION_NAMES[action] for action in actions]
-        self._actions = [action + 1 for action in actions]
+        # self._actions = [action + 1 for action in actions]
 
         state = self._env.step(action_names)
-        for i in range(self._n_agents):
-            if state[i].status == 'DONE':
-                self._actions[i] = 0
+        # for i in range(self._n_agents):
+        #     if state[i].status == 'DONE':
+        #         self._actions[i] = 0
 
         if self._debug:
             printout(state)
@@ -150,23 +152,24 @@ class GooseEnv(gym.Env, ABC):
 
     def get_players_obs(self, state, players_obs):
         geese_deque = deque(state[0].observation['geese'])
-        actions_deque = deque(self._actions)
-        # geese_len_deque = deque([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
+        # actions_deque = deque(self._actions)
+        geese_len_deque = deque([len(state[0].observation.geese[i]) for i in range(self._n_agents)])
         time_step = np.asarray((state[0].observation.step,))
-        time = to_binary(time_step, self._binary_positions).ravel()
-        food = np.zeros((self._env.configuration.rows * self._env.configuration.columns), dtype=np.uint8)
-        food[state[0].observation['food']] = 1
-        scalars = np.concatenate([food, time])
+        time = time_step
+        # time = to_binary(time_step, self._binary_positions).ravel()
+        food = np.zeros(2, dtype=np.uint8)
+        food[:] = state[0].observation['food']
+        scalars = np.concatenate([time, food])
         for i in range(self._n_agents):
-            observation = get_feature_maps(self._env.configuration, state[0].observation, np.array(actions_deque))
-            # scalar observations
-            # geese_len = np.array(geese_len_deque)
+            observation, self._old_heads[i] = get_feature_maps(
+                self._env.configuration, state[0].observation, np.array(geese_len_deque), self._old_heads[i]
+            )
             # store observations
             players_obs[i] = (observation, scalars)
             # rotate geese
             geese_deque.rotate(-1)
-            actions_deque.rotate(-1)
-            # geese_len_deque.rotate(-1)
+            geese_len_deque.rotate(-1)
+            # actions_deque.rotate(-1)
             state[0].observation['geese'] = geese_deque
         return players_obs
 
@@ -270,19 +273,18 @@ def get_obs_queue(obs, old_obs_queue):
     return old_obs_queue
 
 
-def get_feature_maps(config, state, actions):
-    numbers_bin = np.array([[0, 0, 0],
-                           [0, 0, 1],
-                           [0, 1, 0],
-                           [0, 1, 1],
-                           [1, 0, 0]], dtype=np.uint8)
-    base = 3
+def get_feature_maps(config, state, geese_len, old_heads):
     n_geese = len(state['geese'])
-    number_of_layers = n_geese
-    A = np.zeros((number_of_layers, config.rows * config.columns + 2*base), dtype=np.uint8)
+    goose_positions = config.rows * config.columns // 2
+    # goose number, goose length, head, previous head, tail, goose coordinates
+    A = np.zeros((n_geese, 1 + 1 + 1 + 1 + 1 + goose_positions), dtype=np.uint8)
     for i, goose in enumerate(state['geese']):
-        A[i, goose] = 1
-        A[i, -6:-3] = numbers_bin[actions[i]]
-        A[i, -3:] = numbers_bin[i + 1] if goose else numbers_bin[0]
+        goose_array = np.zeros(1, dtype=np.uint8) if not goose else np.array(goose) + 1
+        A[i, 0] = i + 1
+        A[i, 1] = geese_len[i]
+        A[i, 2] = goose_array[0]
+        A[i, 3] = old_heads[i]
+        A[i, 4] = goose_array[-1]
+        A[i, 5:5+geese_len[i]] = goose_array
 
-    return A
+    return A, A[:, 2]

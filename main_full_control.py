@@ -103,7 +103,7 @@ def get_pg_policy(env_name, file='data/data.pickle'):
 
     env = gym.make(env_name)
     space = env.observation_space
-    feature_maps_shape = space[0][0].shape  # height, width, channels
+    feature_maps_shape = space[0][0].shape
     scalar_features_shape = space[0][1].shape
     input_shape = (feature_maps_shape, scalar_features_shape)
     n_outputs = env.action_space.n
@@ -142,8 +142,43 @@ def get_pg_policy(env_name, file='data/data.pickle'):
 #         return action
 #     return geese_agent
 
-
 class GeeseAgent:
+    def __init__(self, policy):
+        # self._previous_obs = None
+        # self._old_heads = np.zeros((4, 7 * 11), dtype=np.uint8)
+        self._old_heads = np.zeros(4, dtype=np.uint8)
+        self._policy = policy
+        self._n_agents = 4
+        # self._binary_positions = 8
+
+    def get_action(self, obs_dict, config_dict):
+        state = Observation(obs_dict)
+        config = Configuration(config_dict)
+        state.geese[0], state.geese[state.index] = state.geese[state.index], state.geese[0]
+
+        geese_len = np.array([len(state.geese[i]) for i in range(self._n_agents)])
+        obs, self._old_heads = get_feature_maps(config,
+                                                state,
+                                                geese_len,
+                                                self._old_heads)
+
+        # time = to_binary(time_step, self._binary_positions).ravel()
+
+        time_step = np.asarray((state.step,), dtype=np.uint8)
+        food = np.zeros(2, dtype=np.uint8)
+        food[:] = state['food']
+        scalars = np.concatenate([time_step, food])
+
+        # scalars_decimal = np.concatenate([geese_len, time_step])
+        # scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
+        # scalars = np.asarray((state.step,), dtype=np.uint8)
+        # self._previous_obs = get_obs_queue(obs, self._previous_obs)  # put observation into a queue
+
+        action = self._policy((obs, scalars))
+        return action
+
+
+class GeeseAgent2:
     def __init__(self, policy):
         self._actions = None
         self._heads = None
@@ -232,9 +267,9 @@ if __name__ == '__main__':
 
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
-    trained_policy = get_pg_policy('gym_goose:goose-v5')
+    trained_policy = get_pg_policy('gym_goose:goose-v5', file='data/data4000.pickle')
 
-    show_gym(number_of_games)  # , trained_policy)
+    # show_gym(number_of_games)  # , trained_policy)
 
     geese = [GeeseAgent(trained_policy) for _ in range(4)]
     environment = make('hungry_geese', configuration={'min_food': 2})
