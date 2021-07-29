@@ -5,13 +5,14 @@ import pickle
 import numpy as np
 import tensorflow as tf
 import gym
-from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration, Action, row_col
+from kaggle_environments.envs.hungry_geese.hungry_geese import Observation, Configuration
+from kaggle_environments.envs.hungry_geese.hungry_geese import Action, row_col
 from kaggle_environments import make
 
-# from gym_goose.envs.goose_env_3 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
-# from gym_goose.envs.goose_env_3 import get_feature_maps, to_binary
-from gym_goose.envs.goose_env_5 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
-from gym_goose.envs.goose_env_5 import get_feature_maps, to_binary
+from gym_goose.envs.goose_env_4 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from gym_goose.envs.goose_env_4 import get_feature_maps, to_binary
+# from gym_goose.envs.goose_env_5 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+# from gym_goose.envs.goose_env_5 import get_feature_maps, to_binary
 from tf_reinforcement_agents import models
 
 ACTIONS = [0, 1, 2, 3]
@@ -109,7 +110,7 @@ def get_pg_policy(env_name, file='data/data.pickle'):
     n_outputs = env.action_space.n
 
     # model = models.get_actor_critic(input_shape, n_outputs)
-    model = models.get_actor_critic3()
+    model = models.get_actor_critic2()
     # call a model once to build it before setting weights
     dummy_input = (tf.ones(feature_maps_shape, dtype=tf.uint8),
                    tf.ones(scalar_features_shape, dtype=tf.uint8))
@@ -142,7 +143,37 @@ def get_pg_policy(env_name, file='data/data.pickle'):
 #         return action
 #     return geese_agent
 
+
 class GeeseAgent:
+    def __init__(self, policy):
+        # self._previous_obs = None
+        self._old_heads = np.zeros((4, 7 * 11), dtype=np.uint8)
+        self._policy = policy
+        self._n_agents = 4
+        self._binary_positions = 8
+
+    def get_action(self, obs_dict, config_dict):
+        state = Observation(obs_dict)
+        config = Configuration(config_dict)
+        state.geese[0], state.geese[state.index] = state.geese[state.index], state.geese[0]
+
+        # obs = get_obs(config, state)  # get an observation
+        obs, self._old_heads = get_feature_maps(config,
+                                                state,
+                                                self._old_heads)
+
+        time_step = np.asarray((state.step,))
+        geese_len = np.array([len(state.geese[i]) for i in range(self._n_agents)])
+        scalars_decimal = np.concatenate([geese_len, time_step])
+        scalars = to_binary(scalars_decimal, self._binary_positions).ravel()
+        # scalars = np.asarray((state.step,), dtype=np.uint8)
+        # self._previous_obs = get_obs_queue(obs, self._previous_obs)  # put observation into a queue
+
+        action = self._policy((obs, scalars))
+        return action
+
+
+class GeeseAgent2:
     def __init__(self, policy):
         # self._previous_obs = None
         # self._old_heads = np.zeros((4, 7 * 11), dtype=np.uint8)
@@ -178,8 +209,10 @@ class GeeseAgent:
         return action
 
 
-class GeeseAgent2:
+class GeeseAgent3:
+
     def __init__(self, policy):
+
         self._actions = None
         self._heads = None
         self._policy = policy
@@ -267,7 +300,7 @@ if __name__ == '__main__':
 
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
-    trained_policy = get_pg_policy('gym_goose:goose-v5', file='data/data4000.pickle')
+    trained_policy = get_pg_policy('gym_goose:goose-v4', file='data/data.pickle')
 
     # show_gym(number_of_games)  # , trained_policy)
 
