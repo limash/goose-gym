@@ -29,3 +29,8 @@ register(
     id='goose-v5',
     entry_point='gym_goose.envs:GooseEnv5',
 )
+
+register(
+    id='goose-v6',
+    entry_point='gym_goose.envs:GooseEnv6',
+)
