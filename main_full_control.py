@@ -11,8 +11,8 @@ from kaggle_environments import make
 
 # from gym_goose.envs.goose_env_4 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
 # from gym_goose.envs.goose_env_4 import get_feature_maps, to_binary
-from gym_goose.envs.goose_env_6 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
-from gym_goose.envs.goose_env_6 import get_feature_maps, to_binary
+from gym_goose.envs.goose_env_7 import ACTION_NAMES, OPPOSITE_ACTION_NAMES
+from gym_goose.envs.goose_env_7 import get_feature_maps, to_binary
 from tf_reinforcement_agents import models
 
 ACTIONS = [0, 1, 2, 3]
@@ -110,8 +110,8 @@ def get_pg_policy(env_name, file='data/data.pickle'):
     # n_outputs = env.action_space.n
 
     # model = models.get_actor_critic(input_shape, n_outputs)
-    # model = models.get_actor_critic2()
-    model = models.get_actor_critic3()
+    model = models.get_actor_critic2()
+    # model = models.get_actor_critic3()
     # call a model once to build it before setting weights
     dummy_input = (tf.ones(feature_maps_shape, dtype=tf.uint8),
                    tf.ones(scalar_features_shape, dtype=tf.uint8))
@@ -146,7 +146,7 @@ def get_pg_policy(env_name, file='data/data.pickle'):
 
 
 class GeeseAgent:
-    """for goose_env_4"""
+    """for goose_env 4 and 7"""
     def __init__(self, policy):
         # self._previous_obs = None
         self._old_heads = np.zeros((4, 7 * 11), dtype=np.uint8)
@@ -303,7 +303,7 @@ class GeeseAgent4:
 
 
 def show_gym(number_of_iterations, policy=None):
-    env = gym.make('gym_goose:goose-v6', debug=True)
+    env = gym.make('gym_goose:goose-v7', debug=True)
     for i in range(number_of_iterations):
         all_rewards = np.zeros(4)
         t0 = time.time()
@@ -336,11 +336,11 @@ if __name__ == '__main__':
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
     # trained_policy = get_pg_policy('gym_goose:goose-v4', file='data/data.pickle')
-    trained_policy = get_pg_policy('gym_goose:goose-v6', file='data/data10000.pickle')
+    # trained_policy = get_pg_policy('gym_goose:goose-v6', file='data/data10000.pickle')
 
-    # show_gym(number_of_games)
+    show_gym(number_of_games)
 
-    geese = [GeeseAgent4(trained_policy) for _ in range(4)]
-    environment = make('hungry_geese', configuration={'min_food': 2})
-    logs = environment.run([goose.get_action for goose in geese])
+    # geese = [GeeseAgent4(trained_policy) for _ in range(4)]
+    # environment = make('hungry_geese', configuration={'min_food': 2})
+    # logs = environment.run([goose.get_action for goose in geese])
     print("Done")
