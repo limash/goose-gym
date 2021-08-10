@@ -62,6 +62,8 @@ class GooseEnv(gym.Env, ABC):
         self._geese_length = np.ones(self._n_agents)  # for rewards
         self._rewards = [-1, -0.33, 0.33, 1]
         self._num_alive = 4
+        self._old_heads = [np.zeros((self._n_agents, self._config.rows * self._config.columns), dtype=np.uint8)
+                           for _ in range(self._n_agents)]
 
         state = self._env.reset(self._n_agents)
         if self._debug:

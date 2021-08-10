@@ -331,14 +331,14 @@ def show_gym(number_of_iterations, policy=None):
 
 
 if __name__ == '__main__':
-    number_of_games = 1
+    number_of_games = 10
 
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
     # trained_policy = get_pg_policy('gym_goose:goose-v4', file='data/data.pickle')
-    # trained_policy = get_pg_policy('gym_goose:goose-v6', file='data/data10000.pickle')
+    trained_policy = get_pg_policy('gym_goose:goose-v7', file='data/data60000.pickle')
 
-    show_gym(number_of_games)
+    show_gym(number_of_games, trained_policy)
 
     # geese = [GeeseAgent4(trained_policy) for _ in range(4)]
     # environment = make('hungry_geese', configuration={'min_food': 2})
