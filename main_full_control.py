@@ -129,6 +129,45 @@ def get_pg_policy(env_name, file='data/data.pickle'):
     return policy
 
 
+def get_pg_exp_policy(env_name, file='data/data.pickle'):
+    try:
+        with open(file, 'rb') as file:
+            init_data = pickle.load(file)
+    except FileNotFoundError as err:
+        raise err
+
+    env = gym.make(env_name)
+    space = env.observation_space
+    feature_maps_shape = space[0][0].shape
+    scalar_features_shape = space[0][1].shape
+    # input_shape = (feature_maps_shape, scalar_features_shape)
+    # n_outputs = env.action_space.n
+
+    # model = models.get_actor_critic(input_shape, n_outputs)
+    model = models.get_actor_critic2(model_type='exp')
+    # model = models.get_actor_critic3()
+    # call a model once to build it before setting weights
+    dummy_input = (tf.ones(feature_maps_shape, dtype=tf.uint8),
+                   tf.ones(scalar_features_shape, dtype=tf.uint8))
+    dummy_input = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), dummy_input)
+    model(dummy_input)
+
+    # with open('data/data_brick.pickle', 'rb') as file:
+    #     data = pickle.load(file)
+    # model.layers[0].set_weights(data['weights'][:66])
+    # model.layers[0].trainable = False
+    model.set_weights(init_data['weights'])
+
+    def policy(obs_in):
+        obs = tf.nest.map_structure(lambda x: tf.expand_dims(x, axis=0), obs_in)
+        policy_logits, _ = model(obs)
+        int_act = tf.random.categorical(policy_logits, num_samples=1, dtype=tf.int32)
+        # probs = tf.nn.softmax(policy_logits)
+        return ACTION_NAMES[int_act.numpy()[0][0]]
+
+    return policy
+
+
 # def get_geese_agent(policy):
 #     def geese_agent(obs_dict, config_dict):
 #         global previous_obs
@@ -336,7 +375,7 @@ if __name__ == '__main__':
     # trained_policy = get_dqn_policy('gym_goose:goose-full_control-v3')
     # trained_policy = get_cat_policy('gym_goose:goose-full_control-v0')
     # trained_policy = get_pg_policy('gym_goose:goose-v4', file='data/data.pickle')
-    trained_policy = get_pg_policy('gym_goose:goose-v7', file='data/data60000.pickle')
+    trained_policy = get_pg_exp_policy('gym_goose:goose-v7', file='data/data5000.pickle')
 
     show_gym(number_of_games, trained_policy)
 
